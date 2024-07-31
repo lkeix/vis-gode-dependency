@@ -1,5 +1,7 @@
 package model
 
+import "fmt"
+
 type Dependency struct {
 	FromPackage *Package
 	FromFile    *File
@@ -25,6 +27,19 @@ func NewDependency(fromPackage *Package, fromFile *File, fromObject *Object, fro
 		ToObject:    toObject,
 		ToFunc:      toFunc,
 	}
+}
+
+func (d *Dependency) String() string {
+	return fmt.Sprintf(`package: %s
+file: %s
+object: %s
+function: %s
+↓
+package: %s
+file: %s
+object: %s
+function: %s
+`, d.FromPackage, d.FromFile, d.FromObject, d.FromFunc, d.ToPackage, d.ToFile, d.ToObject, d.ToFunc)
 }
 
 type DependencyList []*Dependency

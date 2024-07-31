@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
 	"go/types"
@@ -26,30 +25,47 @@ func NewFile(name string, syntax *ast.File, fset *token.FileSet) *File {
 	}
 }
 
-func (f *File) Analyze(pkgs Packages) error {
+func (f *File) String() string {
+	return f.Name
+}
+
+func (f *File) Analyze(pkgs Packages) (DependencyList, error) {
+	deps := make(DependencyList, 0)
 	for _, decl := range f.syntax.Decls {
 		switch d := decl.(type) {
 		case *ast.GenDecl:
 
 		case *ast.FuncDecl:
 			references := f.analyzeStatements(d.Body.List, pkgs)
+			var fromObj *Object
+			if d.Recv != nil && len(d.Recv.List) != 0 {
+				recv := d.Recv.List[0]
+				recvType := pkgs.FindReciverDeclarationByField(recv)
+				if recvType != nil {
+					fromObj = NewObject(recvType.Type().String(), "struct", recv.Pos(), recvType)
+				}
+			}
+
+			fromFun := NewFunction(d.Name.Name)
+
 			for _, reference := range references {
-				obj := f.getObject(reference)
-				fmt.Printf("%s.%s call %s.%s.%s\n", f.Name, d.Name.Name, reference.Pkg().Name(), obj.Name, reference.Id())
+				dep := NewDependency(f.lookupPackage(pkgs), f, fromObj, fromFun, reference.pkg, reference.obj.lookupFile(pkgs), reference.obj, reference.fun)
+				deps = append(deps, dep)
 			}
 		}
 	}
 
-	return nil
+	return deps, nil
 }
 
 type reference struct {
 	pkg *Package
 	obj *Object
+	fun *Function
 }
 
-func (f *File) analyzeStatements(stmts []ast.Stmt, pkgs Packages) []types.Object {
-	ret := make([]types.Object, 0)
+func (f *File) analyzeStatements(stmts []ast.Stmt, pkgs Packages) []*reference {
+	ret := make([]*reference, 0)
 	for _, stmt := range stmts {
 		switch s := stmt.(type) {
 		case *ast.ExprStmt:
@@ -60,10 +76,18 @@ func (f *File) analyzeStatements(stmts []ast.Stmt, pkgs Packages) []types.Object
 					continue
 				}
 
+				fun := NewFunction(selExpr.Sel.Name)
 				for _, pkg := range pkgs {
-					obj := pkg.pkg.TypesInfo.ObjectOf(selExpr.Sel)
-					if obj != nil {
-						ret = append(ret, obj)
+					gotObj := pkg.pkg.TypesInfo.ObjectOf(selExpr.Sel)
+					if gotObj != nil {
+						obj := f.getObject(gotObj)
+						p := pkgs.FindPackageByPath(obj.obj.Pkg().Path())
+
+						ret = append(ret, &reference{
+							pkg: p,
+							obj: obj,
+							fun: fun,
+						})
 					}
 				}
 			}
@@ -74,7 +98,12 @@ func (f *File) analyzeStatements(stmts []ast.Stmt, pkgs Packages) []types.Object
 }
 
 func (f *File) getObject(obj types.Object) *Object {
-	sig, ok := obj.Type().(*types.Signature)
+	funcObj, ok := obj.(*types.Func)
+	if !ok {
+		return nil
+	}
+
+	sig, ok := funcObj.Type().(*types.Signature)
 	if !ok {
 		return nil
 	}
@@ -85,7 +114,19 @@ func (f *File) getObject(obj types.Object) *Object {
 			recvType = ptr.Elem()
 		}
 		if named, ok := recvType.(*types.Named); ok {
-			return NewObject(named.Obj().Name(), "struct", token.NoPos)
+			return NewObject(named.Obj().Name(), "struct", recv.Pos(), obj)
+		}
+	}
+
+	return nil
+}
+
+func (f *File) lookupPackage(pkgs Packages) *Package {
+	for _, pkg := range pkgs {
+		for i := range pkg.pkg.GoFiles {
+			if pkg.pkg.Syntax[i] == f.syntax {
+				return pkg
+			}
 		}
 	}
 

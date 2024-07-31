@@ -9,3 +9,7 @@ func NewFunction(name string) *Function {
 		Name: name,
 	}
 }
+
+func (f *Function) String() string {
+	return f.Name
+}

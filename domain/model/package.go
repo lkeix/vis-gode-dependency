@@ -52,3 +52,12 @@ func (p Packages) FindReciverDeclarationByField(field *ast.Field) types.Object {
 	}
 	return nil
 }
+
+func (p Packages) FindPackageByPath(path string) *Package {
+	for _, pkg := range p {
+		if pkg.pkg.PkgPath == path {
+			return pkg
+		}
+	}
+	return nil
+}
