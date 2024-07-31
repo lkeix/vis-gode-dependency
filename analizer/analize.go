@@ -5,48 +5,64 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"os"
 	"path/filepath"
 
 	"github.com/lkeix/vis-gode-dependency/domain/model"
+	"golang.org/x/tools/go/packages"
 )
 
 type Analizer struct {
-	path string
 }
 
-func NewAnalizer(path string) *Analizer {
-	return &Analizer{
-		path: path,
+func NewAnalizer() *Analizer {
+	return &Analizer{}
+}
+
+var cfg = &packages.Config{
+	Mode: packages.NeedFiles |
+		packages.NeedSyntax |
+		packages.NeedTypes |
+		packages.NeedTypesInfo |
+		packages.NeedDeps,
+}
+
+func (a *Analizer) preAnalize() (model.Packages, error) {
+	// files := make([]*model.File, 0)
+	files, err := filepath.Glob("./go.mod")
+	if err != nil {
+		return nil, err
 	}
+
+	if len(files) == 0 {
+		return nil, fmt.Errorf("go.mod file not found")
+	}
+
+	pkgs, err := packages.Load(cfg, "./...")
+	if err != nil {
+		return nil, err
+	}
+
+	preAnalyzedPkgs, err := a.preAnalizePackages(pkgs)
+	if err != nil {
+		return nil, err
+	}
+
+	preAnalyzedPkgs.Analize()
+
+	return model.Packages{}, nil
 }
 
-func (a *Analizer) preAnalize() model.Packages {
-	files := make([]*model.File, 0, 0)
-
-	filepath.Walk(a.path, func(path string, info os.FileInfo, err error) error {
-		if info.IsDir() {
-			return nil
-		}
-
-		ext := filepath.Ext(path)
-		if ext != ".go" {
-			return nil
-		}
-
-		f, err := a.analizeAST(path)
-		if err != nil {
-			return err
-		}
-
-		files = append(files, f)
-		return nil
-	})
-	return model.Packages{}
-}
-
-func (a *Analizer) AnalizeDependency() model.Packages {
+func (a *Analizer) AnalizeDependency() (model.Packages, error) {
 	return a.preAnalize()
+}
+
+func (a *Analizer) preAnalizePackages(pkgs []*packages.Package) (model.Packages, error) {
+	ret := make(model.Packages, 0)
+	for _, pkg := range pkgs {
+		ret = append(ret, model.NewPackage(pkg.ID, pkg))
+	}
+
+	return ret, nil
 }
 
 func (a *Analizer) analizeAST(path string) (*model.File, error) {
