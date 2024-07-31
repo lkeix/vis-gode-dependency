@@ -29,6 +29,10 @@ func NewPackage(name string, pkg *packages.Package) *Package {
 	}
 }
 
+func (p *Package) String() string {
+	return p.Name
+}
+
 type Packages []*Package
 
 func (p Packages) Analize() {
@@ -39,9 +43,9 @@ func (p Packages) Analize() {
 	}
 }
 
-func (p Packages) FindReciverDeclaration(field *ast.Field) types.Type {
+func (p Packages) FindReciverDeclarationByField(field *ast.Field) types.Object {
 	for _, pkg := range p {
-		t := pkg.pkg.TypesInfo.TypeOf(field.Type)
+		t := pkg.pkg.TypesInfo.ObjectOf(field.Names[0])
 		if t != nil {
 			return t
 		}

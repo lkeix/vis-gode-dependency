@@ -1,10 +1,7 @@
-package analizer
+package analyzer
 
 import (
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"path/filepath"
 
 	"github.com/lkeix/vis-gode-dependency/domain/model"
@@ -23,6 +20,8 @@ var cfg = &packages.Config{
 		packages.NeedSyntax |
 		packages.NeedTypes |
 		packages.NeedTypesInfo |
+		packages.NeedName |
+		packages.NeedImports |
 		packages.NeedDeps,
 }
 
@@ -63,41 +62,4 @@ func (a *Analizer) preAnalizePackages(pkgs []*packages.Package) (model.Packages,
 	}
 
 	return ret, nil
-}
-
-func (a *Analizer) analizeAST(path string) (*model.File, error) {
-	fset := token.NewFileSet()
-	fast, err := parser.ParseFile(fset, path, nil, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, decl := range fast.Decls {
-		switch d := decl.(type) {
-		case *ast.GenDecl:
-			// TODO: analize GenDecl
-		case *ast.FuncDecl:
-			if d.Recv != nil {
-				// TODO: reference to reciver type
-				a.referenceRecvType(d.Recv.List[0])
-			}
-			fmt.Println(d.Name.Name)
-		}
-	}
-
-	return nil, nil
-}
-
-func (a *Analizer) referenceRecvType(field *ast.Field) *model.Object {
-	switch d := field.Type.(type) {
-	case *ast.Ident:
-		return model.NewObject(d.Name, "defined type", d.Pos())
-	case *ast.StarExpr:
-		i, ok := d.X.(*ast.Ident)
-		if !ok {
-			return nil
-		}
-		return model.NewObject(i.Name, "pointer", d.Pos())
-	}
-	return nil
 }

@@ -1,13 +1,11 @@
 package model
 
 type Function struct {
-	Name          string
-	CallFunctions []*CallFunction
-	CallStruct    []*Object
+	Name string
 }
 
-type CallFunction struct {
-	Package  *Package
-	Struct   *Object
-	Function *Function
+func NewFunction(name string) *Function {
+	return &Function{
+		Name: name,
+	}
 }

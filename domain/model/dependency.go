@@ -2,22 +2,28 @@ package model
 
 type Dependency struct {
 	FromPackage *Package
+	FromFile    *File
 	FromObject  *Object
 	FromFunc    *Function
 
 	ToPackage *Package
-	ToFunc    *Function
+	ToFile    *File
 	ToObject  *Object
+	ToFunc    *Function
 }
 
-func NewDependency(fromPackage *Package, fromObject *Object, fromFunc *Function, toPackage *Package, toFunc *Function, toObject *Object) *Dependency {
+const layout = `%s.%s.%s.%s -> %s.%s.%s.%s`
+
+func NewDependency(fromPackage *Package, fromFile *File, fromObject *Object, fromFunc *Function, toPackage *Package, toFile *File, toObject *Object, toFunc *Function) *Dependency {
 	return &Dependency{
 		FromPackage: fromPackage,
+		FromFile:    fromFile,
 		FromObject:  fromObject,
 		FromFunc:    fromFunc,
 		ToPackage:   toPackage,
-		ToFunc:      toFunc,
+		ToFile:      toFile,
 		ToObject:    toObject,
+		ToFunc:      toFunc,
 	}
 }
 

@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"github.com/lkeix/vis-gode-dependency/analizer"
+	analizer "github.com/lkeix/vis-gode-dependency/analyzer"
 	"github.com/spf13/cobra"
 )
 

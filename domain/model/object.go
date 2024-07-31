@@ -16,3 +16,7 @@ func NewObject(name, t string, pos token.Pos) *Object {
 		Pos:  pos,
 	}
 }
+
+func (o *Object) String() string {
+	return o.Name
+}
