@@ -4,13 +4,16 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"path/filepath"
+	"regexp"
+	"strings"
 )
 
 type File struct {
 	Name        string
 	Dir         string
 	PackageName string
-	Structs     []*Object
+	Objects     []*Object
 	Funcs       []*Function
 
 	syntax *ast.File
@@ -21,8 +24,23 @@ func NewFile(name string, syntax *ast.File, fset *token.FileSet) *File {
 	return &File{
 		Name:   name,
 		syntax: syntax,
+		Funcs:  preAnalyze(syntax),
 		fset:   fset,
 	}
+}
+
+func preAnalyze(syntax *ast.File) []*Function {
+	ret := make([]*Function, 0)
+	for _, decl := range syntax.Decls {
+		switch d := decl.(type) {
+		case *ast.GenDecl:
+
+		case *ast.FuncDecl:
+			ret = append(ret, NewFunction(d.Name.Name, d.Pos()))
+		}
+	}
+
+	return ret
 }
 
 func (f *File) String() string {
@@ -42,11 +60,14 @@ func (f *File) Analyze(pkgs Packages) (DependencyList, error) {
 				recv := d.Recv.List[0]
 				recvType := pkgs.FindReciverDeclarationByField(recv)
 				if recvType != nil {
-					fromObj = NewObject(recvType.Type().String(), "struct", recv.Pos(), recvType)
+					objBaseName := filepath.Base(recvType.Type().String())
+					replacePrefix := regexp.MustCompile(`[a-z]+.`).FindString(objBaseName)
+					objName := strings.ReplaceAll(objBaseName, replacePrefix, "")
+					fromObj = NewObject(objName, "struct", recv.Pos(), recvType)
 				}
 			}
 
-			fromFun := NewFunction(d.Name.Name)
+			fromFun := NewFunction(d.Name.Name, d.Pos())
 
 			for _, reference := range references {
 				dep := NewDependency(f.lookupPackage(pkgs), f, fromObj, fromFun, reference.pkg, reference.obj.lookupFile(pkgs), reference.obj, reference.fun)
@@ -76,7 +97,7 @@ func (f *File) analyzeStatements(stmts []ast.Stmt, pkgs Packages) []*reference {
 					continue
 				}
 
-				fun := NewFunction(selExpr.Sel.Name)
+				fun := NewFunction(selExpr.Sel.Name, selExpr.Sel.Pos())
 				for _, pkg := range pkgs {
 					gotObj := pkg.pkg.TypesInfo.ObjectOf(selExpr.Sel)
 					if gotObj != nil {

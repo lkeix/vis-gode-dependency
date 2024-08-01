@@ -24,8 +24,7 @@ func NewPackage(name string, pkg *packages.Package) *Package {
 	return &Package{
 		Name:  name,
 		Files: files,
-
-		pkg: pkg,
+		pkg:   pkg,
 	}
 }
 
@@ -35,12 +34,20 @@ func (p *Package) String() string {
 
 type Packages []*Package
 
-func (p Packages) Analize() {
+func (p Packages) Analyze() (DependencyList, error) {
+	dependencyList := make(DependencyList, 0)
 	for _, pkg := range p {
 		for _, file := range pkg.Files {
-			file.Analyze(p)
+			d, err := file.Analyze(p)
+			if err != nil {
+				return nil, err
+			}
+
+			dependencyList = append(dependencyList, d...)
 		}
 	}
+
+	return dependencyList, nil
 }
 
 func (p Packages) FindReciverDeclarationByField(field *ast.Field) types.Object {
