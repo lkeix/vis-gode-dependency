@@ -28,6 +28,21 @@ func NewPackage(name string, pkg *packages.Package) *Package {
 	}
 }
 
+func (p *Package) findInterfaces() []*Interface {
+	ret := make([]*Interface, 0)
+	for _, file := range p.Files {
+		ret = append(ret, file.Interfaces...)
+	}
+
+	return ret
+}
+
+func (p *Package) complete() {
+	for i := range p.pkg.GoFiles {
+		p.Files[i].complete()
+	}
+}
+
 func (p *Package) String() string {
 	return p.Name
 }
@@ -45,6 +60,8 @@ func (p Packages) Analyze() (DependencyList, error) {
 
 			dependencyList = append(dependencyList, d...)
 		}
+
+		pkg.findInterfaces()
 	}
 
 	return dependencyList, nil
@@ -66,5 +83,6 @@ func (p Packages) FindPackageByPath(path string) *Package {
 			return pkg
 		}
 	}
+
 	return nil
 }

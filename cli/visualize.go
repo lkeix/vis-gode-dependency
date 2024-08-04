@@ -18,7 +18,7 @@ func NewVisuazlize() *cobra.Command {
 				panic(err)
 			}
 
-			visualizer := infrastructure.NewGraphviz()
+			visualizer := infrastructure.NewPlantUML()
 			if err := visualizer.Visualize(dependencyList); err != nil {
 				panic(err)
 			}

@@ -14,6 +14,7 @@ type File struct {
 	Dir         string
 	PackageName string
 	Objects     []*Object
+	Interfaces  []*Interface
 	Funcs       []*Function
 
 	syntax *ast.File
@@ -21,26 +22,43 @@ type File struct {
 }
 
 func NewFile(name string, syntax *ast.File, fset *token.FileSet) *File {
+	funcs, interfaces := preAnalyze(syntax)
+
 	return &File{
-		Name:   name,
-		syntax: syntax,
-		Funcs:  preAnalyze(syntax),
-		fset:   fset,
+		Name:       name,
+		syntax:     syntax,
+		Funcs:      funcs,
+		Interfaces: interfaces,
+		fset:       fset,
 	}
 }
 
-func preAnalyze(syntax *ast.File) []*Function {
-	ret := make([]*Function, 0)
+func preAnalyze(syntax *ast.File) ([]*Function, []*Interface) {
+	retFuncs := make([]*Function, 0)
+	retInteraces := make([]*Interface, 0)
+
 	for _, decl := range syntax.Decls {
 		switch d := decl.(type) {
 		case *ast.GenDecl:
-
+			for _, spec := range d.Specs {
+				if typeSpec, ok := spec.(*ast.TypeSpec); ok {
+					if i, ok := typeSpec.Type.(*ast.InterfaceType); ok {
+						methods := make([]*Function, 0, len(i.Methods.List))
+						for _, field := range i.Methods.List {
+							if _, ok := field.Type.(*ast.FuncType); ok {
+								methods = append(methods, NewFunction(field.Names[0].Name, field.Pos()))
+							}
+						}
+						retInteraces = append(retInteraces, NewInterface(typeSpec.Name.Name, methods, typeSpec.Pos()))
+					}
+				}
+			}
 		case *ast.FuncDecl:
-			ret = append(ret, NewFunction(d.Name.Name, d.Pos()))
+			retFuncs = append(retFuncs, NewFunction(d.Name.Name, d.Pos()))
 		}
 	}
 
-	return ret
+	return retFuncs, retInteraces
 }
 
 func (f *File) String() string {
@@ -51,8 +69,6 @@ func (f *File) Analyze(pkgs Packages) (DependencyList, error) {
 	deps := make(DependencyList, 0)
 	for _, decl := range f.syntax.Decls {
 		switch d := decl.(type) {
-		case *ast.GenDecl:
-
 		case *ast.FuncDecl:
 			references := f.analyzeStatements(d.Body.List, pkgs)
 			var fromObj *Object
@@ -152,4 +168,44 @@ func (f *File) lookupPackage(pkgs Packages) *Package {
 	}
 
 	return nil
+}
+
+func (f *File) complete() {
+	objMap := make(map[string]*Object)
+
+	for _, decl := range f.syntax.Decls {
+		switch d := decl.(type) {
+		case *ast.GenDecl:
+			for _, spec := range d.Specs {
+				if typeSpec, ok := spec.(*ast.TypeSpec); ok {
+					if i, ok := typeSpec.Type.(*ast.InterfaceType); ok {
+						interfaceMethods := make([]*Function, 0, len(i.Methods.List))
+						for _, field := range i.Methods.List {
+							if _, ok := field.Type.(*ast.FuncType); ok {
+								interfaceMethods = append(interfaceMethods, NewFunction(field.Names[0].Name, field.Pos()))
+							}
+						}
+						f.Interfaces = append(f.Interfaces, NewInterface(typeSpec.Name.Name, interfaceMethods, typeSpec.Pos()))
+					}
+
+					if _, ok := typeSpec.Type.(*ast.StructType); ok {
+						objMap[typeSpec.Name.Name] = NewObject(typeSpec.Name.Name, "struct", typeSpec.Pos(), nil)
+					}
+				}
+			}
+		case *ast.FuncDecl:
+			if d.Recv != nil && len(d.Recv.List) != 0 {
+				recvName := d.Recv.List[0].Type.(*ast.StarExpr).X.(*ast.Ident).Name
+				obj := objMap[recvName]
+				if obj != nil {
+					obj.Methods = append(obj.Methods, NewFunction(d.Name.Name, d.Pos()))
+					objMap[recvName] = obj
+				}
+			}
+		}
+	}
+
+	for _, obj := range objMap {
+		f.Objects = append(f.Objects, obj)
+	}
 }

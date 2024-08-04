@@ -14,8 +14,6 @@ type Dependency struct {
 	ToFunc    *Function
 }
 
-const layout = `%s.%s.%s.%s -> %s.%s.%s.%s`
-
 func NewDependency(fromPackage *Package, fromFile *File, fromObject *Object, fromFunc *Function, toPackage *Package, toFile *File, toObject *Object, toFunc *Function) *Dependency {
 	return &Dependency{
 		FromPackage: fromPackage,
@@ -39,6 +37,7 @@ package: %s
 file: %s
 object: %s
 function: %s
+
 `, d.FromPackage, d.FromFile, d.FromObject, d.FromFunc, d.ToPackage, d.ToFile, d.ToObject, d.ToFunc)
 }
 
@@ -131,6 +130,9 @@ func (d DependencyList) Aggregate() Packages {
 				for k, obj := range objects {
 					methods := d.Methods(obj)
 					objects[k].Methods = methods
+
+					i := obj.lookupImplementInterface(dep.FromPackage)
+					objects[k].ImplementInterface = i
 				}
 				file.Objects = append(file.Objects, objects...)
 			}
@@ -141,12 +143,22 @@ func (d DependencyList) Aggregate() Packages {
 		}
 
 		if _, ok := pkgMap[dep.ToPackage.Name]; !ok {
+			dep.ToPackage.complete()
 			files := d.Files(dep.ToPackage)
 			for _, file := range files {
 				objects := d.Objects(file)
 				for k, obj := range objects {
 					methods := d.Methods(obj)
 					objects[k].Methods = methods
+
+					i := obj.lookupImplementInterface(dep.ToPackage)
+					if i != nil {
+						if o := i.lookupImplementedObject(dep.ToPackage); o != nil {
+							o.ImplementInterface = i
+							o.Methods = methods
+							objects[k] = o
+						}
+					}
 				}
 				file.Objects = append(file.Objects, objects...)
 			}
