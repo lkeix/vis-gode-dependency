@@ -1,0 +1,36 @@
+@startuml
+package "github_com/lkeix/vis-gode-dependency/testdata/usecase.fuga" {
+  class fugaUsecase {
+   +Fuga()
+  }
+  interface FugaUsecase {
+   +Fuga()
+  }
+}
+package "github_com/lkeix/vis-gode-dependency/testdata/usecase.hoge" {
+  interface HogeUsecase {
+   +Hoge()
+  }
+  class hogeUsecase implements HogeUsecase {
+   +Hoge()
+  }
+}
+package "github_com/lkeix/vis-gode-dependency/testdata/infrastructure.hoge" {
+  interface Hoge {
+   +Hoge()
+  }
+  class hoge implements Hoge {
+   +Hoge()
+  }
+}
+package "github_com/lkeix/vis-gode-dependency/testdata/handler.fuga" {
+  class fugaHandler {
+   +Fuga()
+  }
+}
+package "github_com/lkeix/vis-gode-dependency/testdata/handler.hoge" {
+  class hogeHandler {
+   +Hoge()
+  }
+}
+@enduml
