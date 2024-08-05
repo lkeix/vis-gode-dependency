@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/lkeix/vis-gode-dependency/domain/model"
+	"github.com/lkeix/vis-gode-dependency/domain/model/languagecomponents"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -25,7 +25,7 @@ var cfg = &packages.Config{
 		packages.NeedDeps,
 }
 
-func (a *Analizer) AnalyzeDependency() (model.DependencyList, error) {
+func (a *Analizer) AnalyzeDependency() (languagecomponents.DependencyList, error) {
 	// files := make([]*model.File, 0)
 	files, err := filepath.Glob("./go.mod")
 	if err != nil {
@@ -49,10 +49,10 @@ func (a *Analizer) AnalyzeDependency() (model.DependencyList, error) {
 	return preAnalyzedPkgs.Analyze()
 }
 
-func (a *Analizer) preAnalizePackages(pkgs []*packages.Package) (model.Packages, error) {
-	ret := make(model.Packages, 0)
+func (a *Analizer) preAnalizePackages(pkgs []*packages.Package) (languagecomponents.Packages, error) {
+	ret := make(languagecomponents.Packages, 0)
 	for _, pkg := range pkgs {
-		ret = append(ret, model.NewPackage(pkg.ID, pkg))
+		ret = append(ret, languagecomponents.NewPackage(pkg.ID, pkg))
 	}
 
 	return ret, nil

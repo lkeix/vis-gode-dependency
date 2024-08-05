@@ -1,4 +1,4 @@
-package model
+package languagecomponents
 
 import (
 	"go/token"

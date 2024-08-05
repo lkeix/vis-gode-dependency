@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/lkeix/vis-gode-dependency/domain/model"
+	"github.com/lkeix/vis-gode-dependency/domain/model/languagecomponents"
 	"github.com/lkeix/vis-gode-dependency/domain/repository"
 )
 
@@ -18,27 +18,13 @@ func NewPlantUML() *plantuml {
 	return &plantuml{}
 }
 
-func (p *plantuml) Visualize(dependencyList model.DependencyList) error {
-	/*
-		fmt.Println(dependencyList)
-		pkgs := dependencyList.Aggregate()
-		for _, pkg := range pkgs {
-			for _, file := range pkg.Files {
-				fmt.Println(file.Objects)
-				for _, object := range file.Objects {
-					fmt.Println(len(object.Methods))
-					fmt.Println(object.Methods)
-				}
-			}
-		}
-	*/
-
-	fmt.Println(p.generateClassDiagram(dependencyList))
+func (p *plantuml) Visualize(dependencyList languagecomponents.DependencyList) error {
+	p.generateClassDiagram(dependencyList)
 
 	return nil
 }
 
-func (p *plantuml) generateClassDiagram(dependencyList model.DependencyList) string {
+func (p *plantuml) generateClassDiagram(dependencyList languagecomponents.DependencyList) string {
 	pkgs := dependencyList.Aggregate()
 
 	builder := strings.Builder{}
