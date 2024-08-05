@@ -19,7 +19,9 @@ func NewPlantUML() *plantuml {
 }
 
 func (p *plantuml) Visualize(dependencyList languagecomponents.DependencyList) error {
-	p.generateClassDiagram(dependencyList)
+	plantUML := p.generateClassDiagram(dependencyList)
+
+	fmt.Println(plantUML)
 
 	return nil
 }
