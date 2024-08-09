@@ -1,12 +1,10 @@
 package infrastructure
 
-type Hoge interface {
-	Hoge()
-}
+import "github.com/lkeix/vis-gode-dependency/testdata/domain/repository"
 
 type hoge struct{}
 
-var _ Hoge = &hoge{}
+var _ repository.Hoge = &hoge{}
 
 func NewHoge() *hoge {
 	return &hoge{}

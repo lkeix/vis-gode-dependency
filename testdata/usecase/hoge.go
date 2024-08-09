@@ -1,18 +1,20 @@
 package usecase
 
-import "github.com/lkeix/vis-gode-dependency/testdata/infrastructure"
+import (
+	"github.com/lkeix/vis-gode-dependency/testdata/domain/repository"
+)
 
 type HogeUsecase interface {
 	Hoge()
 }
 
 type hogeUsecase struct {
-	hogeInfra infrastructure.Hoge
+	hogeInfra repository.Hoge
 }
 
 var _ HogeUsecase = &hogeUsecase{}
 
-func NewHogeUsecase(hi infrastructure.Hoge) *hogeUsecase {
+func NewHogeUsecase(hi repository.Hoge) *hogeUsecase {
 	return &hogeUsecase{
 		hogeInfra: hi,
 	}

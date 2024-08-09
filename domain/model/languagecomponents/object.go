@@ -3,17 +3,23 @@ package languagecomponents
 import (
 	"go/token"
 	"go/types"
+
+	"github.com/lkeix/vis-gode-dependency/utils"
 )
 
 type Interface struct {
 	Name    string
+	Package *Package
+	File    *File
 	Methods []*Function
 	Pos     token.Pos
 }
 
-func NewInterface(name string, methods []*Function, pos token.Pos) *Interface {
+func NewInterface(name string, methods []*Function, pkg *Package, file *File, pos token.Pos) *Interface {
 	return &Interface{
 		Name:    name,
+		Package: pkg,
+		File:    file,
 		Methods: methods,
 		Pos:     pos,
 	}
@@ -61,6 +67,10 @@ func NewObject(name, t string, pos token.Pos, obj types.Object) *Object {
 }
 
 func (o *Object) hasMethod(method *Function) bool {
+	if !utils.IsUpperCase(method.Name) {
+		return true
+	}
+
 	for _, m := range o.Methods {
 		if m.Name == method.Name {
 			return true
@@ -72,6 +82,14 @@ func (o *Object) hasMethod(method *Function) bool {
 
 func (o *Object) String() string {
 	return o.Name
+}
+
+func (o *Object) IsInterface() bool {
+	return o.Type == "interface"
+}
+
+func (o *Object) IsStruct() bool {
+	return o.Type == "struct"
 }
 
 func (o *Object) lookupFile(pkgs Packages) *File {
@@ -104,6 +122,37 @@ func (o *Object) lookupImplementInterface(pkg *Package) *Interface {
 	for _, i := range interfaces {
 		if i.isImplemented(o) {
 			return i
+		}
+	}
+
+	return nil
+}
+
+func (o *Object) lookupImplementObjectPackage(pkgs Packages) *Package {
+	for _, pkg := range pkgs {
+		if p, ok := pkg.pkg.Imports[o.obj.Pkg().Path()]; ok {
+			for fi, file := range pkg.Files {
+				if len(file.Objects) == 0 {
+					file.complete(pkg)
+				}
+
+				for oi, obj := range file.Objects {
+					isImplemented := true
+					for _, method := range obj.Methods {
+						if !o.hasMethod(method) {
+							isImplemented = false
+							break
+						}
+					}
+
+					if obj.ImplementInterface == nil && isImplemented {
+						i := NewInterface(o.Name, o.Methods, NewPackage(p.ID, p), file, o.Pos)
+						obj.ImplementInterface = i
+						pkg.Files[fi].Objects[oi] = obj
+						return pkg
+					}
+				}
+			}
 		}
 	}
 

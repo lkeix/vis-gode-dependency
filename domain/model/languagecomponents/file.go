@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"golang.org/x/tools/go/packages"
 )
 
 type File struct {
@@ -49,7 +51,7 @@ func preAnalyze(syntax *ast.File) ([]*Function, []*Interface) {
 								methods = append(methods, NewFunction(field.Names[0].Name, field.Pos()))
 							}
 						}
-						retInteraces = append(retInteraces, NewInterface(typeSpec.Name.Name, methods, typeSpec.Pos()))
+						retInteraces = append(retInteraces, NewInterface(typeSpec.Name.Name, methods, nil, nil, typeSpec.Pos()))
 					}
 				}
 			}
@@ -65,8 +67,8 @@ func (f *File) String() string {
 	return f.Name
 }
 
-func (f *File) Analyze(pkgs Packages) (DependencyList, error) {
-	deps := make(DependencyList, 0)
+func (f *File) Analyze(pkgs Packages) (*DependencyList, error) {
+	deps := NewDependencyList(pkgs)
 	for _, decl := range f.syntax.Decls {
 		switch d := decl.(type) {
 		case *ast.FuncDecl:
@@ -87,7 +89,7 @@ func (f *File) Analyze(pkgs Packages) (DependencyList, error) {
 
 			for _, reference := range references {
 				dep := NewDependency(f.lookupPackage(pkgs), f, fromObj, fromFun, reference.pkg, reference.obj.lookupFile(pkgs), reference.obj, reference.fun)
-				deps = append(deps, dep)
+				deps.list = append(deps.list, dep)
 			}
 		}
 	}
@@ -117,7 +119,7 @@ func (f *File) analyzeStatements(stmts []ast.Stmt, pkgs Packages) []*reference {
 				for _, pkg := range pkgs {
 					gotObj := pkg.pkg.TypesInfo.ObjectOf(selExpr.Sel)
 					if gotObj != nil {
-						obj := f.getObject(gotObj)
+						obj := f.getReciverObject(gotObj)
 						p := pkgs.FindPackageByPath(obj.obj.Pkg().Path())
 
 						ret = append(ret, &reference{
@@ -134,7 +136,75 @@ func (f *File) analyzeStatements(stmts []ast.Stmt, pkgs Packages) []*reference {
 	return ret
 }
 
-func (f *File) getObject(obj types.Object) *Object {
+func (f *File) AnalyzeGenDecls(pkgs Packages) Packages {
+	for _, decl := range f.syntax.Decls {
+		if d, ok := decl.(*ast.GenDecl); ok {
+			for _, spec := range d.Specs {
+				if vs, ok := spec.(*ast.ValueSpec); ok {
+					if len(vs.Values) == 1 {
+						var implementedStruct *Object
+						if expr, ok := vs.Values[0].(*ast.UnaryExpr); ok {
+							if cl, ok := expr.X.(*ast.CompositeLit); ok {
+								if id, ok := cl.Type.(*ast.Ident); ok {
+									for _, pkg := range pkgs {
+										got := pkg.pkg.TypesInfo.ObjectOf(id)
+										if got != nil {
+											implementedStruct = f.getGenDeclObject(got)
+										}
+									}
+								}
+							}
+						}
+
+						gotPkg, gotInterface := f.getExternalPackageAndInterface(vs.Type, pkgs.Packages())
+						if gotInterface != nil {
+							if i := implementedStruct.lookupImplementInterface(gotPkg); i != nil {
+								implementedStruct.ImplementInterface = i
+								implementedStruct.Methods = i.Methods
+							}
+						}
+
+						for i := range pkgs {
+							if pkgs[i] == gotPkg {
+								pkgs[i] = gotPkg
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return pkgs
+}
+
+func (f *File) getExternalPackageAndInterface(expr ast.Expr, pkgs []*packages.Package) (*Package, types.Object) {
+	switch t := expr.(type) {
+	case *ast.SelectorExpr:
+		for _, pkg := range pkgs {
+			gotObj := pkg.TypesInfo.ObjectOf(t.Sel)
+			if gotObj != nil {
+				return NewPackage(pkg.ID, pkg), gotObj
+			}
+		}
+	}
+
+	return nil, nil
+}
+
+func (f *File) getGenDeclObject(obj types.Object) *Object {
+	tn, ok := obj.(*types.TypeName)
+	if !ok {
+		return nil
+	}
+
+	if named, ok := tn.Type().(*types.Named); ok {
+		return NewObject(named.Obj().Name(), "struct", obj.Pos(), obj)
+	}
+
+	return nil
+}
+
+func (f *File) getReciverObject(obj types.Object) *Object {
 	funcObj, ok := obj.(*types.Func)
 	if !ok {
 		return nil
@@ -150,8 +220,15 @@ func (f *File) getObject(obj types.Object) *Object {
 		if ptr, ok := recvType.(*types.Pointer); ok {
 			recvType = ptr.Elem()
 		}
+
 		if named, ok := recvType.(*types.Named); ok {
-			return NewObject(named.Obj().Name(), "struct", recv.Pos(), obj)
+			if _, ok := named.Obj().Type().Underlying().(*types.Interface); ok {
+				return NewObject(named.Obj().Name(), "interface", recv.Pos(), obj)
+			}
+
+			if _, ok := named.Obj().Type().Underlying().(*types.Struct); ok {
+				return NewObject(named.Obj().Name(), "struct", recv.Pos(), obj)
+			}
 		}
 	}
 
@@ -170,7 +247,7 @@ func (f *File) lookupPackage(pkgs Packages) *Package {
 	return nil
 }
 
-func (f *File) complete() {
+func (f *File) complete(pkg *Package) {
 	objMap := make(map[string]*Object)
 
 	for _, decl := range f.syntax.Decls {
@@ -185,7 +262,7 @@ func (f *File) complete() {
 								interfaceMethods = append(interfaceMethods, NewFunction(field.Names[0].Name, field.Pos()))
 							}
 						}
-						f.Interfaces = append(f.Interfaces, NewInterface(typeSpec.Name.Name, interfaceMethods, typeSpec.Pos()))
+						f.Interfaces = append(f.Interfaces, NewInterface(typeSpec.Name.Name, interfaceMethods, pkg, f, typeSpec.Pos()))
 					}
 
 					if _, ok := typeSpec.Type.(*ast.StructType); ok {

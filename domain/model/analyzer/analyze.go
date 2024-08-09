@@ -25,7 +25,7 @@ var cfg = &packages.Config{
 		packages.NeedDeps,
 }
 
-func (a *Analizer) AnalyzeDependency() (languagecomponents.DependencyList, error) {
+func (a *Analizer) AnalyzeDependency() (*languagecomponents.DependencyList, error) {
 	// files := make([]*model.File, 0)
 	files, err := filepath.Glob("./go.mod")
 	if err != nil {
@@ -53,6 +53,12 @@ func (a *Analizer) preAnalizePackages(pkgs []*packages.Package) (languagecompone
 	ret := make(languagecomponents.Packages, 0)
 	for _, pkg := range pkgs {
 		ret = append(ret, languagecomponents.NewPackage(pkg.ID, pkg))
+	}
+
+	for _, pkg := range ret {
+		for _, file := range pkg.Files {
+			ret = file.AnalyzeGenDecls(ret)
+		}
 	}
 
 	return ret, nil

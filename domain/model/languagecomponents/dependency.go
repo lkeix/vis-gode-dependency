@@ -41,21 +41,31 @@ function: %s
 `, d.FromPackage, d.FromFile, d.FromObject, d.FromFunc, d.ToPackage, d.ToFile, d.ToObject, d.ToFunc)
 }
 
-type DependencyList []*Dependency
+type DependencyList struct {
+	list     []*Dependency
+	packages Packages
+}
 
-func (d DependencyList) String() string {
+func NewDependencyList(pkgs Packages) *DependencyList {
+	return &DependencyList{
+		list:     make([]*Dependency, 0),
+		packages: pkgs,
+	}
+}
+
+func (d *DependencyList) String() string {
 	var s string
-	for _, dep := range d {
+	for _, dep := range d.list {
 		s += dep.String()
 	}
 
 	return s
 }
 
-func (d DependencyList) Methods(obj *Object) []*Function {
+func (d *DependencyList) Methods(obj *Object) []*Function {
 	methods := make([]*Function, 0)
 	methodMap := make(map[string]*Function)
-	for _, dep := range d {
+	for _, dep := range d.list {
 		if dep.FromObject == obj {
 			if _, ok := methodMap[dep.FromFunc.Name]; !ok {
 				methodMap[dep.FromFunc.Name] = dep.FromFunc
@@ -77,7 +87,7 @@ func (d DependencyList) Methods(obj *Object) []*Function {
 func (d DependencyList) Objects(file *File) []*Object {
 	objects := make([]*Object, 0)
 	objectMap := make(map[string]*Object)
-	for _, dep := range d {
+	for _, dep := range d.list {
 		if dep.FromFile == file {
 			if _, ok := objectMap[dep.FromObject.Name]; !ok {
 				objectMap[dep.FromObject.Name] = dep.FromObject
@@ -96,10 +106,10 @@ func (d DependencyList) Objects(file *File) []*Object {
 	return objects
 }
 
-func (d DependencyList) Files(pkg *Package) []*File {
+func (d *DependencyList) Files(pkg *Package) []*File {
 	files := make([]*File, 0)
 	fileMap := make(map[string]*File)
-	for _, dep := range d {
+	for _, dep := range d.list {
 		if dep.FromPackage == pkg {
 			if _, ok := fileMap[dep.FromFile.Name]; !ok {
 				fileMap[dep.FromFile.Name] = dep.FromFile
@@ -118,11 +128,11 @@ func (d DependencyList) Files(pkg *Package) []*File {
 	return files
 }
 
-func (d DependencyList) Aggregate() Packages {
+func (d *DependencyList) Aggregate() Packages {
 	pkgs := make(Packages, 0)
 	pkgMap := make(map[string]*Package)
 
-	for _, dep := range d {
+	for _, dep := range d.list {
 		if _, ok := pkgMap[dep.FromPackage.Name]; !ok {
 			files := d.Files(dep.FromPackage)
 			for _, file := range files {
@@ -159,6 +169,10 @@ func (d DependencyList) Aggregate() Packages {
 							objects[k] = o
 						}
 					}
+
+					p := obj.lookupImplementObjectPackage(d.packages)
+					pkgs = append(pkgs, p)
+					pkgMap[p.Name] = p
 				}
 				file.Objects = append(file.Objects, objects...)
 			}

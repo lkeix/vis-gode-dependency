@@ -1,36 +1,47 @@
 @startuml
-package "github_com/lkeix/vis-gode-dependency/testdata/usecase.fuga" {
-  class fugaUsecase {
-   +Fuga()
+package "github_com/lkeix/vis-gode-dependency/testdata/usecase" {
+  package "github_com/lkeix/vis-gode-dependency/testdata/usecase.fuga" {
+    interface FugaUsecase {
+      +Fuga()
+    }
+    struct fugaUsecase {
+      +Fuga()
+    }
   }
-  interface FugaUsecase {
-   +Fuga()
-  }
-}
-package "github_com/lkeix/vis-gode-dependency/testdata/usecase.hoge" {
-  interface HogeUsecase {
-   +Hoge()
-  }
-  class hogeUsecase implements HogeUsecase {
-   +Hoge()
-  }
-}
-package "github_com/lkeix/vis-gode-dependency/testdata/infrastructure.hoge" {
-  interface Hoge {
-   +Hoge()
-  }
-  class hoge implements Hoge {
-   +Hoge()
+  package "github_com/lkeix/vis-gode-dependency/testdata/usecase.hoge" {
+    interface HogeUsecase {
+      +Hoge()
+    }
+    struct hogeUsecase {
+      +Hoge()
+    }
   }
 }
-package "github_com/lkeix/vis-gode-dependency/testdata/handler.fuga" {
-  class fugaHandler {
-   +Fuga()
+package "github_com/lkeix/vis-gode-dependency/testdata/infrastructure" {
+  package "github_com/lkeix/vis-gode-dependency/testdata/infrastructure.hoge" {
+    struct hoge implements "github_com/lkeix/vis-gode-dependency/testdata/domain/repository.hoge.Hoge" {
+      +Hoge()
+    }
   }
 }
-package "github_com/lkeix/vis-gode-dependency/testdata/handler.hoge" {
-  class hogeHandler {
-   +Hoge()
+package "github_com/lkeix/vis-gode-dependency/testdata/domain/repository" {
+  package "github_com/lkeix/vis-gode-dependency/testdata/domain/repository.hoge" {
+    interface Hoge {
+      +Hoge()
+    }
+  }
+}
+package "github_com/lkeix/vis-gode-dependency/testdata/handler" {
+  package "github_com/lkeix/vis-gode-dependency/testdata/handler.fuga" {
+    struct fugaHandler {
+      +Fuga()
+    }
+  }
+  package "github_com/lkeix/vis-gode-dependency/testdata/handler.hoge" {
+    struct hogeHandler {
+      +Hoge()
+    }
   }
 }
 @enduml
+
