@@ -95,3 +95,17 @@ func (p Packages) Packages() []*packages.Package {
 
 	return ret
 }
+
+func (p Packages) Unique() Packages {
+	mp := make(map[*Package]struct{})
+	ret := make(Packages, 0, len(p))
+
+	for _, pkg := range p {
+		if _, ok := mp[pkg]; !ok {
+			ret = append(ret, pkg)
+		}
+		mp[pkg] = struct{}{}
+	}
+
+	return ret
+}

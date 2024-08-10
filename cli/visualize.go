@@ -12,14 +12,21 @@ func NewVisuazlize() *cobra.Command {
 		Use:   "visualize",
 		Short: "Visualize Go dependencies",
 		Run: func(cmd *cobra.Command, args []string) {
-			a := analyzer.NewAnalizer()
+			a := analyzer.NewAnalyzer()
 			dependencyList, err := a.AnalyzeDependency()
 			if err != nil {
 				panic(err)
 			}
 
-			visualizer := infrastructure.NewPlantUML()
-			if err := visualizer.Visualize(dependencyList); err != nil {
+			modName, err := a.ModName()
+			if err != nil {
+				panic(err)
+			}
+
+			sorted := dependencyList.TopologicalSort()
+
+			visualizer := infrastructure.NewPlantUML(modName)
+			if err := visualizer.Visualize(sorted); err != nil {
 				panic(err)
 			}
 		},

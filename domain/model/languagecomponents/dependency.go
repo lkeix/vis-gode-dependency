@@ -1,6 +1,9 @@
 package languagecomponents
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 type Dependency struct {
 	FromPackage *Package
@@ -128,7 +131,55 @@ func (d *DependencyList) Files(pkg *Package) []*File {
 	return files
 }
 
+func (d *DependencyList) TopologicalSort() *DependencyList {
+	graph := make(map[*Package]Packages)
+	inDegree := make(map[*Package]int)
+
+	for _, dep := range d.list {
+		inDegree[dep.ToPackage] = 0
+		inDegree[dep.FromPackage] = 0
+
+		graph[dep.FromPackage] = append(graph[dep.FromPackage], dep.ToPackage)
+		inDegree[dep.ToPackage]++
+	}
+
+	queue := make(Packages, 0)
+	for pkg, degree := range inDegree {
+		if degree == 0 {
+			queue = append(queue, pkg)
+		}
+	}
+
+	ordered := make(Packages, 0)
+	for len(queue) > 0 {
+		pkg := queue[0]
+		queue = queue[1:]
+
+		ordered = append(ordered, pkg)
+
+		for _, neighbor := range graph[pkg] {
+			inDegree[neighbor]--
+			if inDegree[neighbor] == 0 {
+				queue = append(queue, neighbor)
+			}
+		}
+	}
+
+	slices.Reverse(ordered)
+	ret := NewDependencyList(d.packages)
+	for _, pkg := range ordered {
+		for _, dep := range d.list {
+			if dep.ToPackage == pkg {
+				ret.list = append(ret.list, dep)
+			}
+		}
+	}
+
+	return ret
+}
+
 func (d *DependencyList) Aggregate() Packages {
+
 	pkgs := make(Packages, 0)
 	pkgMap := make(map[string]*Package)
 
@@ -155,33 +206,27 @@ func (d *DependencyList) Aggregate() Packages {
 		if _, ok := pkgMap[dep.ToPackage.Name]; !ok {
 			dep.ToPackage.complete()
 			files := d.Files(dep.ToPackage)
+			pkg := dep.ToPackage
+			pkg.Files = files
+			pkgs = append(pkgs, pkg)
 			for _, file := range files {
 				objects := d.Objects(file)
 				for k, obj := range objects {
 					methods := d.Methods(obj)
 					objects[k].Methods = methods
-
-					i := obj.lookupImplementInterface(dep.ToPackage)
-					if i != nil {
-						if o := i.lookupImplementedObject(dep.ToPackage); o != nil {
-							o.ImplementInterface = i
-							o.Methods = methods
-							objects[k] = o
-						}
-					}
-
 					p := obj.lookupImplementObjectPackage(d.packages)
 					pkgs = append(pkgs, p)
 					pkgMap[p.Name] = p
 				}
 				file.Objects = append(file.Objects, objects...)
 			}
-			pkg := dep.ToPackage
-			pkg.Files = files
-			pkgs = append(pkgs, pkg)
 			pkgMap[pkg.Name] = pkg
 		}
 	}
 
-	return pkgs
+	return pkgs.Unique()
+}
+
+func (d *DependencyList) List() []*Dependency {
+	return d.list
 }

@@ -1,18 +1,21 @@
 package analyzer
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/lkeix/vis-gode-dependency/domain/model/languagecomponents"
 	"golang.org/x/tools/go/packages"
 )
 
-type Analizer struct {
+type Analyzer struct {
 }
 
-func NewAnalizer() *Analizer {
-	return &Analizer{}
+func NewAnalyzer() *Analyzer {
+	return &Analyzer{}
 }
 
 var cfg = &packages.Config{
@@ -25,7 +28,7 @@ var cfg = &packages.Config{
 		packages.NeedDeps,
 }
 
-func (a *Analizer) AnalyzeDependency() (*languagecomponents.DependencyList, error) {
+func (a *Analyzer) AnalyzeDependency() (*languagecomponents.DependencyList, error) {
 	// files := make([]*model.File, 0)
 	files, err := filepath.Glob("./go.mod")
 	if err != nil {
@@ -49,7 +52,7 @@ func (a *Analizer) AnalyzeDependency() (*languagecomponents.DependencyList, erro
 	return preAnalyzedPkgs.Analyze()
 }
 
-func (a *Analizer) preAnalizePackages(pkgs []*packages.Package) (languagecomponents.Packages, error) {
+func (a *Analyzer) preAnalizePackages(pkgs []*packages.Package) (languagecomponents.Packages, error) {
 	ret := make(languagecomponents.Packages, 0)
 	for _, pkg := range pkgs {
 		ret = append(ret, languagecomponents.NewPackage(pkg.ID, pkg))
@@ -62,4 +65,20 @@ func (a *Analizer) preAnalizePackages(pkgs []*packages.Package) (languagecompone
 	}
 
 	return ret, nil
+}
+
+func (a *Analyzer) ModName() (string, error) {
+	f, err := os.ReadFile("./go.mod")
+	if err != nil {
+		return "", err
+	}
+
+	ss := strings.Split(string(f), "\n")
+	for _, s := range ss {
+		if strings.HasPrefix(s, "module ") {
+			return strings.ReplaceAll(s+"/", "module ", ""), nil
+		}
+	}
+
+	return "", errors.New("failed to analyze go.mod")
 }

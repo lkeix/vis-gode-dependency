@@ -1,47 +1,74 @@
 @startuml
-package "github_com/lkeix/vis-gode-dependency/testdata/usecase" {
-  package "github_com/lkeix/vis-gode-dependency/testdata/usecase.fuga" {
+package "usecase" {
+  package "usecase.fuga" {
     interface FugaUsecase {
       +Fuga()
     }
-    struct fugaUsecase {
+    struct fugaUsecase implements "FugaUsecase" {
       +Fuga()
     }
   }
-  package "github_com/lkeix/vis-gode-dependency/testdata/usecase.hoge" {
+  package "usecase.hoge" {
     interface HogeUsecase {
       +Hoge()
     }
-    struct hogeUsecase {
+    struct hogeUsecase implements "HogeUsecase" {
       +Hoge()
     }
   }
 }
-package "github_com/lkeix/vis-gode-dependency/testdata/infrastructure" {
-  package "github_com/lkeix/vis-gode-dependency/testdata/infrastructure.hoge" {
-    struct hoge implements "github_com/lkeix/vis-gode-dependency/testdata/domain/repository.hoge.Hoge" {
-      +Hoge()
-    }
-  }
-}
-package "github_com/lkeix/vis-gode-dependency/testdata/domain/repository" {
-  package "github_com/lkeix/vis-gode-dependency/testdata/domain/repository.hoge" {
+
+package "domain.repository" {
+  package "domain.repository.hoge" {
     interface Hoge {
       +Hoge()
     }
   }
 }
-package "github_com/lkeix/vis-gode-dependency/testdata/handler" {
-  package "github_com/lkeix/vis-gode-dependency/testdata/handler.fuga" {
+
+package "infrastructure" {
+  package "infrastructure.hoge" {
+    struct hoge implements "domain.repository.hoge.Hoge" {
+      +Hoge()
+    }
+  }
+  package "infrastructure.piyo" {
+    struct piyo implements "usecase.queryservice.piyo.Piyo" {
+      +Piyo()
+    }
+  }
+}
+
+package "handler" {
+  package "handler.piyo" {
+    struct piyoHandler {
+      +Piyo()
+    }
+  }
+  package "handler.fuga" {
     struct fugaHandler {
       +Fuga()
     }
   }
-  package "github_com/lkeix/vis-gode-dependency/testdata/handler.hoge" {
+  package "handler.hoge" {
     struct hogeHandler {
       +Hoge()
     }
   }
 }
+
+package "usecase.queryservice" {
+  package "usecase.queryservice.piyo" {
+    interface Piyo {
+      +Piyo()
+    }
+  }
+}
+
+usecase.fuga.fugaUsecase ..> domain.repository.hoge.Hoge
+usecase.hoge.hogeUsecase ..> domain.repository.hoge.Hoge
+handler.piyo.piyoHandler ..> usecase.queryservice.piyo.Piyo
+handler.fuga.fugaHandler ..> usecase.fuga.FugaUsecase
+handler.hoge.hogeHandler ..> usecase.hoge.HogeUsecase
 @enduml
 

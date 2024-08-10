@@ -1,6 +1,7 @@
 package languagecomponents
 
 import (
+	"go/ast"
 	"go/token"
 	"go/types"
 
@@ -129,6 +130,8 @@ func (o *Object) lookupImplementInterface(pkg *Package) *Interface {
 }
 
 func (o *Object) lookupImplementObjectPackage(pkgs Packages) *Package {
+	ret := make(Packages, 0)
+
 	for _, pkg := range pkgs {
 		if p, ok := pkg.pkg.Imports[o.obj.Pkg().Path()]; ok {
 			for fi, file := range pkg.Files {
@@ -145,11 +148,50 @@ func (o *Object) lookupImplementObjectPackage(pkgs Packages) *Package {
 						}
 					}
 
-					if obj.ImplementInterface == nil && isImplemented {
+					selector := getGenDeclPkgSelector(file)
+					if selector != nil && obj.ImplementInterface == nil && isImplemented {
 						i := NewInterface(o.Name, o.Methods, NewPackage(p.ID, p), file, o.Pos)
 						obj.ImplementInterface = i
 						pkg.Files[fi].Objects[oi] = obj
 						return pkg
+					}
+				}
+			}
+		}
+	}
+
+	if len(ret) > 0 {
+		for _, pkg := range ret {
+			for _, file := range pkg.Files {
+				for _, decl := range file.syntax.Decls {
+					if gd, ok := decl.(*ast.GenDecl); ok {
+						for _, spec := range gd.Specs {
+							if vs, ok := spec.(*ast.ValueSpec); ok {
+								if sel, ok := vs.Type.(*ast.SelectorExpr); ok {
+									if x, ok := sel.X.(*ast.Ident); ok {
+										if o.obj.Pkg().Name() == x.Name && sel.Sel.Name == o.Name {
+											return pkg
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func getGenDeclPkgSelector(file *File) *ast.SelectorExpr {
+	for _, decl := range file.syntax.Decls {
+		if gd, ok := decl.(*ast.GenDecl); ok {
+			for _, spec := range gd.Specs {
+				if vs, ok := spec.(*ast.ValueSpec); ok {
+					if sel, ok := vs.Type.(*ast.SelectorExpr); ok {
+						return sel
 					}
 				}
 			}
