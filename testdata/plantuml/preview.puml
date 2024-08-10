@@ -1,19 +1,19 @@
 @startuml
 package "usecase" {
-  package "usecase.fuga" {
-    interface FugaUsecase {
-      +Fuga()
-    }
-    struct fugaUsecase implements "FugaUsecase" {
-      +Fuga()
-    }
-  }
   package "usecase.hoge" {
     interface HogeUsecase {
       +Hoge()
     }
     struct hogeUsecase implements "HogeUsecase" {
       +Hoge()
+    }
+  }
+  package "usecase.fuga" {
+    interface FugaUsecase {
+      +Fuga()
+    }
+    struct fugaUsecase implements "FugaUsecase" {
+      +Fuga()
     }
   }
 }
@@ -35,6 +35,14 @@ package "infrastructure" {
   package "infrastructure.piyo" {
     struct piyo implements "usecase.queryservice.piyo.Piyo" {
       +Piyo()
+    }
+  }
+}
+
+package "domain.model" {
+  package "domain.model.hoge" {
+    struct Hoge {
+      +Xxx()
     }
   }
 }
@@ -65,8 +73,9 @@ package "usecase.queryservice" {
   }
 }
 
-usecase.fuga.fugaUsecase ..> domain.repository.hoge.Hoge
 usecase.hoge.hogeUsecase ..> domain.repository.hoge.Hoge
+usecase.fuga.fugaUsecase ..> domain.model.hoge.Hoge
+usecase.hoge.hogeUsecase ..> domain.model.hoge.Hoge
 handler.piyo.piyoHandler ..> usecase.queryservice.piyo.Piyo
 handler.fuga.fugaHandler ..> usecase.fuga.FugaUsecase
 handler.hoge.hogeHandler ..> usecase.hoge.HogeUsecase

@@ -7,7 +7,7 @@ import (
 )
 
 func NewVisuazlize() *cobra.Command {
-
+	var output string
 	visualizeCmd := &cobra.Command{
 		Use:   "visualize",
 		Short: "Visualize Go dependencies",
@@ -26,11 +26,13 @@ func NewVisuazlize() *cobra.Command {
 			sorted := dependencyList.TopologicalSort()
 
 			visualizer := infrastructure.NewPlantUML(modName)
-			if err := visualizer.Visualize(sorted); err != nil {
+			if err := visualizer.Visualize(sorted, output); err != nil {
 				panic(err)
 			}
 		},
 	}
+
+	visualizeCmd.Flags().StringVarP(&output, "output", "o", "diagram.png", "specify plantuml diagram")
 
 	return visualizeCmd
 }

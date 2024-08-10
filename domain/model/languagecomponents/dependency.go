@@ -215,8 +215,10 @@ func (d *DependencyList) Aggregate() Packages {
 					methods := d.Methods(obj)
 					objects[k].Methods = methods
 					p := obj.lookupImplementObjectPackage(d.packages)
-					pkgs = append(pkgs, p)
-					pkgMap[p.Name] = p
+					if p != nil {
+						pkgs = append(pkgs, p)
+						pkgMap[p.Name] = p
+					}
 				}
 				file.Objects = append(file.Objects, objects...)
 			}

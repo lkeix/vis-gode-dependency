@@ -22,7 +22,7 @@ func NewPlantUML(modName string) *plantuml {
 	}
 }
 
-func (p *plantuml) Visualize(dependencyList *languagecomponents.DependencyList) error {
+func (p *plantuml) Visualize(dependencyList *languagecomponents.DependencyList, outputPath string) error {
 	plantUML := p.generateDiagram(dependencyList)
 
 	fmt.Println(plantUML)

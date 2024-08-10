@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"github.com/lkeix/vis-gode-dependency/testdata/domain/model"
 	"github.com/lkeix/vis-gode-dependency/testdata/domain/repository"
 )
 
@@ -21,5 +22,8 @@ func NewHogeUsecase(hi repository.Hoge) *hogeUsecase {
 }
 
 func (h *hogeUsecase) Hoge() {
+	hoge := model.NewHoge()
+	hoge.Xxx()
+
 	h.hogeInfra.Hoge()
 }

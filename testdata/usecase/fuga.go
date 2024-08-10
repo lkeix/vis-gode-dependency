@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"github.com/lkeix/vis-gode-dependency/testdata/domain/model"
 	"github.com/lkeix/vis-gode-dependency/testdata/domain/repository"
 )
 
@@ -21,5 +22,6 @@ func NewfugaUsecase(hi repository.Hoge) *fugaUsecase {
 }
 
 func (h *fugaUsecase) Fuga() {
-	h.hogeInfra.Hoge()
+	hoge := model.NewHoge()
+	hoge.Xxx()
 }
