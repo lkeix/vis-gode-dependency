@@ -1,10 +1,16 @@
 package infrastructure
 
 import (
+	"embed"
+	_ "embed"
 	"fmt"
+	"io"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/lkeix/vis-gode-dependency/domain/model/languagecomponents"
 	"github.com/lkeix/vis-gode-dependency/domain/repository"
 	"github.com/lkeix/vis-gode-dependency/utils"
@@ -22,23 +28,72 @@ func NewPlantUML(modName string) *plantuml {
 	}
 }
 
-func (p *plantuml) Visualize(dependencyList *languagecomponents.DependencyList, outputPath string) error {
-	plantUML := p.generateDiagram(dependencyList)
+const (
+	plantumlJar = "external_modules/plantuml.jar"
+)
 
-	fmt.Println(plantUML)
+var diagramPath = ""
+
+func init() {
+	diagramPath = uuid.NewString() + ".puml"
+}
+
+//go:embed external_modules/plantuml.jar
+var jarFile embed.FS
+
+func (p *plantuml) Visualize(dependencyList *languagecomponents.DependencyList, outputPath string) error {
+	plantUML := p.generatePlantUML(dependencyList)
+
+	tmpFile, err := p.setupPlantUMLJar()
+	if err != nil {
+		return err
+	}
+
+	f, err := os.Create(diagramPath)
+	if err != nil {
+		return err
+	}
+
+	if _, err := io.WriteString(f, plantUML); err != nil {
+		return err
+	}
+
+	cmd := exec.Command("java", "-jar", tmpFile.Name(), "-o", outputPath, diagramPath)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func (p *plantuml) generateDiagram(dependencyList *languagecomponents.DependencyList) string {
+func (p *plantuml) setupPlantUMLJar() (*os.File, error) {
+	tmpFile, err := os.CreateTemp("", "plantuml-*.jar")
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := jarFile.ReadFile(plantumlJar)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := tmpFile.Write(b); err != nil {
+		return nil, fmt.Errorf("error writing to temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	return tmpFile, nil
+}
+
+func (p *plantuml) generatePlantUML(dependencyList *languagecomponents.DependencyList) string {
 	builder := strings.Builder{}
 
 	builder.WriteString("@startuml\n")
 
-	structDiagramBuilder := p.generatestructDiagram(dependencyList)
+	structDiagramBuilder := p.generateStructPlantUML(dependencyList)
 	builder.WriteString(structDiagramBuilder.String())
 
-	dependencyDiagramBuilder := p.generateDependencyDiagram(dependencyList)
+	dependencyDiagramBuilder := p.generateDependencyPlantUML(dependencyList)
 	builder.WriteString(dependencyDiagramBuilder.String())
 
 	builder.WriteString("@enduml\n")
@@ -46,7 +101,7 @@ func (p *plantuml) generateDiagram(dependencyList *languagecomponents.Dependency
 	return strings.ReplaceAll(strings.ReplaceAll(builder.String(), p.modName, ""), "/", ".")
 }
 
-func (p *plantuml) generatestructDiagram(dependencyList *languagecomponents.DependencyList) strings.Builder {
+func (p *plantuml) generateStructPlantUML(dependencyList *languagecomponents.DependencyList) strings.Builder {
 	pkgs := dependencyList.Aggregate()
 
 	builder := strings.Builder{}
@@ -140,7 +195,7 @@ func (p *plantuml) generatestructDiagram(dependencyList *languagecomponents.Depe
 	return builder
 }
 
-func (p *plantuml) generateDependencyDiagram(dependencyList *languagecomponents.DependencyList) strings.Builder {
+func (p *plantuml) generateDependencyPlantUML(dependencyList *languagecomponents.DependencyList) strings.Builder {
 	builder := strings.Builder{}
 
 	for _, dep := range dependencyList.List() {
@@ -155,4 +210,12 @@ func (p *plantuml) generateDependencyDiagram(dependencyList *languagecomponents.
 	}
 
 	return builder
+}
+
+func (p *plantuml) Cleanup() error {
+	if err := os.RemoveAll(diagramPath); err != nil {
+		return err
+	}
+
+	return nil
 }

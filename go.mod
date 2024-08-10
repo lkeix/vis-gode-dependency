@@ -3,6 +3,7 @@ module github.com/lkeix/vis-gode-dependency
 go 1.22.2
 
 require (
+	github.com/google/uuid v1.6.0
 	github.com/spf13/cobra v1.8.1
 	golang.org/x/tools v0.23.0
 )

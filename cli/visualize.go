@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"fmt"
+
 	"github.com/lkeix/vis-gode-dependency/domain/model/analyzer"
 	"github.com/lkeix/vis-gode-dependency/infrastructure"
 	"github.com/spf13/cobra"
@@ -26,13 +28,24 @@ func NewVisuazlize() *cobra.Command {
 			sorted := dependencyList.TopologicalSort()
 
 			visualizer := infrastructure.NewPlantUML(modName)
+
+			defer func() {
+				if err := recover(); err != nil {
+					fmt.Printf("vizualize error: %v\n", err)
+				}
+
+				if err := visualizer.Cleanup(); err != nil {
+					panic(err)
+				}
+			}()
+
 			if err := visualizer.Visualize(sorted, output); err != nil {
 				panic(err)
 			}
 		},
 	}
 
-	visualizeCmd.Flags().StringVarP(&output, "output", "o", "diagram.png", "specify plantuml diagram")
+	visualizeCmd.Flags().StringVarP(&output, "output", "o", "output", "specify plantuml diagram")
 
 	return visualizeCmd
 }
